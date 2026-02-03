@@ -15,16 +15,26 @@ body {
   padding: 14px;
   background: #000;
   color: #0f0;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   text-align: center;
   border-radius: 8px;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, opacity 0.25s ease;
+}
+#visor.flash {
+  background: #222;
+  opacity: 0.6;
+}
+button {
+  font-size: 18px;
+  padding: 12px;
+  width: 100%;
+  margin-bottom: 10px;
+  border-radius: 8px;
 }
 table {
   width: 100%;
   background: #fff;
   border-collapse: collapse;
-  margin-top: 12px;
 }
 th, td {
   border: 1px solid #ccc;
@@ -35,11 +45,14 @@ th, td {
 th {
   background: #eee;
 }
+tr:active {
+  background: #f0f8ff;
+}
 .teclado {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  margin-top: 12px;
+  margin: 12px 0;
 }
 .tecla {
   background: #333;
@@ -53,31 +66,13 @@ th {
 }
 .tecla:active {
   transform: scale(0.92);
-  background: #555;
-  box-shadow: inset 0 0 12px rgba(255,255,255,0.3);
+  background: #4a90e2;
+  box-shadow: inset 0 0 12px rgba(255,255,255,0.35);
 }
-.tecla.ok {
-  background: #006400;
-}
-.tecla.ok:active {
-  background: #00a000;
-}
-.tecla.clear {
-  background: #8b0000;
-}
-.tecla.clear:active {
-  background: #c00000;
-}
-button {
-  font-size: 20px;
-  padding: 14px;
-  width: 100%;
-  margin-top: 14px;
-  border-radius: 8px;
-}
-.fade {
-  background: #222 !important;
-}
+.tecla.ok { background: #006400; }
+.tecla.clear { background: #8b0000; }
+.tecla.ok:active { background: #00a000; }
+.tecla.clear:active { background: #c00000; }
 </style>
 </head>
 <body>
@@ -85,6 +80,8 @@ button {
 <input id="scanner" type="text" inputmode="none" autofocus style="position:absolute; left:-1000px;">
 
 <div id="visor">Qtd: 1</div>
+
+<button onclick="exportarCSV()">⬆️ Exportar CSV</button>
 
 <div class="teclado">
   <div class="tecla" onclick="digitar(1)">1</div>
@@ -103,12 +100,10 @@ button {
 
 <table>
 <thead>
-<tr><th>Código</th><th>Quantidade</th></tr>
+<tr><th>Código</th><th>Quantidade (toque p/ editar)</th></tr>
 </thead>
 <tbody id="lista"></tbody>
 </table>
-
-<button onclick="exportarCSV()">Exportar CSV</button>
 
 <script>
 let quantidade = "";
@@ -129,27 +124,27 @@ function carregar() {
   }
 }
 
-function feedback() {
-  visor.classList.add("fade");
-  setTimeout(() => visor.classList.remove("fade"), 120);
+function flash() {
+  visor.classList.add("flash");
+  setTimeout(() => visor.classList.remove("flash"), 150);
 }
 
 function digitar(n) {
   quantidade += n;
   visor.innerText = "Qtd: " + quantidade;
-  feedback();
+  flash();
 }
 
 function limpar() {
   quantidade = "";
   visor.innerText = "Qtd: 1";
-  feedback();
+  flash();
 }
 
 function confirmar() {
   if (quantidade === "") quantidade = "1";
   visor.innerText = "Qtd: " + quantidade;
-  feedback();
+  flash();
   scanner.focus();
 }
 
@@ -172,7 +167,19 @@ scanner.addEventListener("keydown", function(e) {
 function atualizarTabela() {
   lista.innerHTML = "";
   for (const c in dados) {
-    lista.innerHTML += `<tr><td>${c}</td><td>${dados[c]}</td></tr>`;
+    lista.innerHTML += `<tr>
+      <td>${c}</td>
+      <td onclick="editarQuantidade('${c}')">${dados[c]}</td>
+    </tr>`;
+  }
+}
+
+function editarQuantidade(codigo) {
+  const nova = prompt("Corrigir quantidade:", dados[codigo]);
+  if (nova !== null && !isNaN(nova) && nova !== "") {
+    dados[codigo] = parseInt(nova);
+    salvar();
+    atualizarTabela();
   }
 }
 
