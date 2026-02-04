@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Coletor de Estoque</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+body{
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  background:#f2f2f2;
+  padding:12px;
+}
+#visor{
+  font-size:30px;
+  padding:14px;
+  background:#000;
+  color:#0f0;
+  margin-bottom:10px;
+  text-align:center;
+  border-radius:8px;
+  transition:background .2s,opacity .25s;
+}
+#visor.flash{background:#222;opacity:.6}
+button{
+  font-size:18px;
+  padding:12px;
+  width:100%;
+  margin-bottom:10px;
+  border-radius:8px;
+  border:none;
+}
+button.export{background:#4a90e2;color:#fff}
+button.clearall{background:#8b0000;color:#fff}
+
+table{
+  width:100%;
+  background:#fff;
+  border-collapse:collapse;
+}
+th,td{
+  border:1px solid #ccc;
+  padding:8px;
+  font-size:16px;
+  text-align:center;
+}
+th{background:#eee}
+
+.teclado{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin:12px 0;
+}
+.tecla{
+  background:#333;
+  color:#fff;
+  font-size:28px;
+  padding:20px;
+  border-radius:10px;
+  text-align:center;
+  user-select:none;
+  transition:transform .08s,background .15s,box-shadow .15s,opacity .15s;
+}
+.tecla:active{
+  transform:scale(.92);
+  background:#4a90e2;
+  box-shadow:inset 0 0 12px rgba(255,255,255,.35);
+  opacity:.85;
+}
+.tecla.ok{background:#006400}
+.tecla.clear{background:#8b0000}
+</style>
+</head>
+<body>
+
+<input id="scanner" type="text" inputmode="none" autofocus style="position:absolute;left:-1000px;">
+
+<div id="visor">Qtd: 1</div>
+
+<button class="export" onclick="exportarCSV()">⬆️ Exportar CSV e limpar</button>
+<button class="clearall" onclick="limparTudo()">🗑 Limpar sem exportar</button>
+
+<div class="teclado">
+  <div class="tecla" onclick="digitar(1)">1</div>
+  <div class="tecla" onclick="digitar(2)">2</div>
+  <div class="tecla" onclick="digitar(3)">3</div>
+  <div class="tecla" onclick="digitar(4)">4</div>
+  <div class="tecla" onclick="digitar(5)">5</div>
+  <div class="tecla" onclick="digitar(6)">6</div>
+  <div class="tecla" onclick="digitar(7)">7</div>
+  <div class="tecla" onclick="digitar(8)">8</div>
+  <div class="tecla" onclick="digitar(9)">9</div>
+  <div class="tecla clear" onclick="limpar()">C</div>
+  <div class="tecla" onclick="digitar(0)">0</div>
+  <div class="tecla ok" onclick="confirmar()">OK</div>
+</div>
+
+<table>
+<thead>
+<tr><th>Código</th><th>Quantidade (toque p/ editar)</th></tr>
+</thead>
+<tbody id="lista"></tbody>
+</table>
+
+<script>
+let quantidade="";
+let dados={};
+
+const visor=document.getElementById("visor");
+const scanner=document.getElementById("scanner");
+const lista=document.getElementById("lista");
+
+function salvar(){
+  localStorage.setItem("estoque_dados",JSON.stringify(dados));
+}
+
+function carregar(){
+  const s=localStorage.getItem("estoque_dados");
+  if(s){
+    dados=JSON.parse(s);
+    atualizarTabela();
+  }
+}
+
+function efeito(){
+  visor.classList.add("flash");
+  setTimeout(()=>visor.classList.remove("flash"),150);
+}
+
+function digitar(n){
+  quantidade+=n;
+  visor.innerText="Qtd: "+quantidade;
+  efeito();
+}
+
+function limpar(){
+  quantidade="";
+  visor.innerText="Qtd: 1";
+  efeito();
+}
+
+function confirmar(){
+  if(quantidade==="") quantidade="1";
+  visor.innerText="Qtd: "+quantidade;
+  efeito();
+  scanner.focus();
+}
+
+scanner.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    const codigo=scanner.value.trim();
+    const qtd=parseInt(quantidade)||1;
+    if(codigo){
+      dados[codigo]=(dados[codigo]||0)+qtd;
+      salvar();
+      atualizarTabela();
+    }
+    scanner.value="";
+    quantidade="";
+    visor.innerText="Qtd: 1";
+    scanner.focus();
+  }
+});
+
+function atualizarTabela(){
+  lista.innerHTML="";
+  for(const c in dados){
+    lista.innerHTML+=`<tr>
+      <td>${c}</td>
+      <td onclick="editarQuantidade('${c}')">${dados[c]}</td>
+    </tr>`;
+  }
+}
+
+function editarQuantidade(c){
+  const n=prompt("Corrigir quantidade:",dados[c]);
+  if(n!==null && !isNaN(n) && n!==""){
+    dados[c]=parseInt(n);
+    salvar();
+    atualizarTabela();
+  }
+}
+
+function exportarCSV(){
+  if(!Object.keys(dados).length){
+    alert("Não há dados para exportar.");
+    return;
+  }
+  let csv="codigo,quantidade\n";
+  for(const c in dados){
+    csv+=`"${c}",${dados[c]}\n`;
+  }
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="estoque.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+
+  dados={};
+  salvar();
+  atualizarTabela();
+}
+
+function limparTudo(){
+  if(!confirm("Deseja limpar toda a listagem?")) return;
+  dados={};
+  salvar();
+  atualizarTabela();
+}
+
+carregar();
+setInterval(()=>scanner.focus(),1000);
+</script>
+
+</body>
+</html>
